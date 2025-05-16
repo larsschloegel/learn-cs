@@ -20,14 +20,48 @@ def encode(value) -> bytes:
         result.append(byte)
     return bytes(result)
 
+def decode(bytes_seq):
+    """
+    Dekodiert eine Varint-kodierte Byte-Sequenz.
+    
+    Args:
+        bytes_seq (bytes): Varint-kodierte Bytes
+        
+    Returns:
+        int: Dekodierter Wert
+    """
+    result = 0
+    shift = 0
 
-with open('150.uint64', 'rb') as file:
-    #8 Bytes einlesen
-    data = file.read(8)
-    #als Big Endian interpretieren
-    decimal = struct.unpack('>Q', data)[0]
-    print(encode(decimal))
-    assert encode(150) == b'\x96\x01'
+    for byte in bytes_seq:
+        #Extrahiere die 7 Datenbits
+        result |= (byte & 0x7f) << shift
+
+        #Prüfe Forsetzungsbit
+        if not (byte & 0x80):
+            break
+        shift += 7
+    return result
+
+if __name__ == '__main__':
+    cases = {
+        ('1.uint64', b'\x01'),
+        ('150.uint64', b'\x96\x01'),
+        ('maxint.uint64', b'\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01'),
+    }
+    for fname, expectation in cases:
+        with open(fname, 'rb') as file:
+            #8 Bytes einlesen
+            data = file.read(8)
+            #als Big Endian interpretieren
+            decimal = struct.unpack('>Q', data)[0]
+            encoded = encode(decimal)
+            print(encoded)
+            assert encoded == expectation
+            print(decode(encoded))
+            #assert decode(b'\x96\x01') == 150
+            assert decode(encoded) == decimal
+    print('ok')
 
 
 """
